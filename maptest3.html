@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Tracking with Navigation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #121212;
+            color: white;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 10px;
+        }
+        #info {
+            margin: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #destination-form {
+            margin: 10px;
+        }
+        input, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h3>Live Tracking with Navigation</h3>
+    <div id="info">Waiting for location...</div>
+    <div id="destination-form">
+        <input type="text" id="destination-address" placeholder="Enter destination address">
+        <button onclick="setDestination()">Set Destination</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        var map = L.map('map').setView([20, 78], 5); // Default to India
+        var userMarker = L.marker([20, 78]).addTo(map).bindPopup("Waiting for location...").openPopup();
+        var destinationMarker = null;
+        var pathPolyline = L.polyline([], { color: 'blue' }).addTo(map);
+        var routePolyline = null;
+        var previousLocation = null;
+
+        // ** Replace YOUR_MAPBOX_ACCESS_TOKEN with your actual token **
+        var mapboxToken = "YOUR_MAPBOX_ACCESS_TOKEN";
+
+        if (mapboxToken !== "YOUR_MAPBOX_ACCESS_TOKEN") {
+            // Use Mapbox Dark Mode Tiles if Token is available
+            L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            }).addTo(map);
+        } else {
+            // Fallback to OpenStreetMap tiles if no Mapbox token is provided
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Function to update user location
+        function updateLocation(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            map.setView([lat, lon], 15);
+            userMarker.setLatLng([lat, lon]).bindPopup("You are here!").openPopup();
+
+            // Update path
+            pathPolyline.addLatLng([lat, lon]);
+            previousLocation = { lat, lon };
+
+            // If destination is set, update the route
+            if (destinationMarker) {
+                calculateRoute([lat, lon], [destinationMarker.getLatLng().lat, destinationMarker.getLatLng().lng]);
+            }
+
+            document.getElementById('info').innerHTML = `Latitude: ${lat.toFixed(6)}, Longitude: ${lon.toFixed(6)}`;
+        }
+
+        function handleError(error) {
+            alert("Error getting location: " + error.message);
+        }
+
+        // Function to set destination
+        function setDestination() {
+            var address = document.getElementById('destination-address').value;
+            if (address) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            var lat = parseFloat(data[0].lat);
+                            var lon = parseFloat(data[0].lon);
+                            if (destinationMarker) {
+                                destinationMarker.setLatLng([lat, lon]);
+                            } else {
+                                destinationMarker = L.marker([lat, lon]).addTo(map).bindPopup("Destination").openPopup();
+                            }
+                            map.setView([lat, lon], 15);
+
+                            // Calculate route if user location is available
+                            if (previousLocation) {
+                                calculateRoute([previousLocation.lat, previousLocation.lon], [lat, lon]);
+                            }
+                        } else {
+                            alert("Destination not found.");
+                        }
+                    })
+                    .catch(error => alert("Error fetching destination coordinates: " + error.message));
+            } else {
+                alert("Please enter a destination address.");
+            }
+        }
+
+        // Function to calculate and display the route using OSRM
+        function calculateRoute(start, end) {
+            var startLonLat = `${start[1]},${start[0]}`;
+            var endLonLat = `${end[1]},${end[0]}`;
+            fetch(`https://router.project-osrm.org/route/v1/driving/${startLonLat};${endLonLat}?overview=full&geometries=geojson`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.routes.length > 0) {
+                        var routeCoordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+                        // Remove existing route polyline if it exists
+                        if (routePolyline) {
+                            map.removeLayer(routePolyline);
+                        }
+
+                        // Draw the new route
+                        routePolyline = L.polyline(routeCoordinates, {color: 'blue', weight: 4}).addTo(map);
+                    } else {
+                        alert("No route found.");
+                    }
+                })
+                .catch(error => alert("Error calculating route: " + error.message));
+        }
+
+        // Get live location updates
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateLocation, handleError, {
+                enableHighAccuracy: true,
+                maximumAge: 0
+            });
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+    </script>
+
+</body>
+</html>

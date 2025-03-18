@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cab Booking App</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <!-- Custom CSS -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e1e1e;
+      color: #ffffff;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    .cab-icon {
+      background: url('https://cdn-icons-png.flaticon.com/512/2838/2838694.png');
+      background-size: cover;
+      width: 32px;
+      height: 32px;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: #2d2d2d;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+    #controls input {
+      margin: 5px 0;
+      padding: 5px;
+      width: 200px;
+      background: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #444;
+    }
+    #controls button {
+      padding: 5px 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px 0;
+    }
+    #controls button:hover {
+      background: #0056b3;
+    }
+    #distance-display {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2d2d2d;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Controls for Destination Input -->
+  <div id="controls">
+    <h3>Enter Destination</h3>
+    <label for="destination-address">Address:</label>
+    <input type="text" id="destination-address" placeholder="Enter destination address" />
+    <button onclick="calculateRoute()">Calculate Route</button>
+    <button onclick="redirectToUserLocation()">Redirect to My Location</button>
+  </div>
+
+  <!-- Floating Distance Display -->
+  <div id="distance-display">Distance: -</div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine JS -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <!-- Custom JS -->
+  <script>
+    // Mock data for nearby cabs
+    const cabs = [
+      { id: 1, lat: 51.505, lng: -0.09, available: true },
+      { id: 2, lat: 51.51, lng: -0.1, available: true },
+      { id: 3, lat: 51.49, lng: -0.08, available: false },
+    ];
+
+    // Initialize the map
+    const map = L.map('map').setView([51.505, -0.09], 13);
+
+    // Add dark-themed tiles (CartoDB Dark Matter)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors, © CartoDB',
+    }).addTo(map);
+
+    // Variables to store user location and routing control
+    let userLocation;
+    let routingControl;
+
+    // Get user location
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        userLocation = [latitude, longitude];
+
+        // Add user location marker
+        L.marker(userLocation, { title: 'You are here' })
+          .addTo(map)
+          .bindPopup('You are here')
+          .openPopup();
+
+        // Set map view to user location
+        map.setView(userLocation, 13);
+
+        // Add nearby cabs
+        cabs.forEach((cab) => {
+          if (cab.available) {
+            L.marker([cab.lat, cab.lng], {
+              icon: L.divIcon({ className: 'cab-icon' }),
+            })
+              .addTo(map)
+              .bindPopup(`Cab ${cab.id}`);
+          }
+        });
+      },
+      (error) => {
+        console.error('Error getting user location:', error);
+      }
+    );
+
+    // Function to geocode address into coordinates
+    async function geocodeAddress(address) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.length > 0) {
+        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      } else {
+        throw new Error('Address not found');
+      }
+    }
+
+    // Function to calculate and display the route
+    async function calculateRoute() {
+      const address = document.getElementById('destination-address').value;
+      if (!address) {
+        alert('Please enter a valid address.');
+        return;
+      }
+
+      try {
+        const destination = await geocodeAddress(address);
+
+        // Remove existing routing control if any
+        if (routingControl) {
+          map.removeControl(routingControl);
+        }
+
+        // Add new routing control without the direction box
+        routingControl = L.Routing.control({
+          waypoints: [
+            L.latLng(userLocation[0], userLocation[1]), // User location
+            L.latLng(destination[0], destination[1]), // Destination
+          ],
+          routeWhileDragging: true,
+          lineOptions: {
+            styles: [{ color: '#007bff', opacity: 0.7, weight: 5 }],
+          },
+          show: false, // Hide the direction box
+        }).addTo(map);
+
+        // Smoothly transition to the destination
+        map.flyTo(destination, 13, {
+          duration: 2, // Duration of the animation in seconds
+        });
+
+        // Display the distance of the route
+        routingControl.on('routesfound', (e) => {
+          const routes = e.routes;
+          const distance = (routes[0].summary.totalDistance / 1000).toFixed(2); // Distance in kilometers
+          document.getElementById('distance-display').innerText = `Distance: ${distance} km`;
+        });
+      } catch (error) {
+        alert('Could not find the address. Please try again.');
+        console.error(error);
+      }
+    }
+
+    // Function to redirect to user's live location with a smooth transition
+    function redirectToUserLocation() {
+      if (userLocation) {
+        // Zoom out first
+        map.flyTo(userLocation, 5, {
+          duration: 1, // Duration of the zoom-out animation in seconds
+        }).once('zoomend', () => {
+          // Zoom in to the user's location
+          map.flyTo(userLocation, 13, {
+            duration: 1, // Duration of the zoom-in animation in seconds
+          });
+        });
+      } else {
+        alert('User location not available.');
+      }
+    }
+
+    // Function to set destination by clicking on the map
+    map.on('click', (e) => {
+      const destination = [e.latlng.lat, e.latlng.lng];
+
+      // Remove existing routing control if any
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+
+      // Add new routing control without the direction box
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(userLocation[0], userLocation[1]), // User location
+          L.latLng(destination[0], destination[1]), // Destination
+        ],
+        routeWhileDragging: true,
+        lineOptions: {
+          styles: [{ color: '#007bff', opacity: 0.7, weight: 5 }],
+        },
+        show: false, // Hide the direction box
+      }).addTo(map);
+
+      // Smoothly transition to the destination
+      map.flyTo(destination, 13, {
+        duration: 2, // Duration of the animation in seconds
+      });
+
+      // Display the distance of the route
+      routingControl.on('routesfound', (e) => {
+        const routes = e.routes;
+        const distance = (routes[0].summary.totalDistance / 1000).toFixed(2); // Distance in kilometers
+        document.getElementById('distance-display').innerText = `Distance: ${distance} km`;
+      });
+    });
+
+    // Simulate AI/ML features
+    function predictDemand(hour, dayOfWeek, area) {
+      // Mock demand prediction
+      const demand = Math.floor(Math.random() * 10) + 1;
+      console.log(`Predicted demand for ${area} at ${hour}:00: ${demand}`);
+      return demand;
+    }
+
+    function optimizeCabAllocation() {
+      // Mock optimization
+      const availableCabs = cabs.filter((cab) => cab.available);
+      console.log('Optimized cab allocation:', availableCabs);
+      return availableCabs;
+    }
+
+    // Example usage
+    predictDemand(14, 1, 'Downtown');
+    optimizeCabAllocation();
+  </script>
+</body>
+</html>
