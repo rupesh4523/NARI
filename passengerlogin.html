@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | SheRide</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #FF8AAE, #FF5E62);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 350px;
+        }
+
+        h1 {
+            color: #FF5E62;
+        }
+
+        .tagline {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .password-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            background: #FF5E62;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #FF3B4F;
+        }
+
+        .toggle-form {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .toggle-form a {
+            color: #FF5E62;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+
+        /* Hide form initially */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h1>NARI</h1>
+        <p class="tagline">Safe Rides, Just for Women</p>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="Enter your email" required>
+            </div>
+
+            <div class="input-group">
+                <label for="login-password">Password</label>
+                <div class="password-container">
+                    <input type="password" id="login-password" placeholder="Enter your password" required>
+                    <span class="toggle-password" onclick="togglePassword('login-password')">👁</span>
+                </div>
+            </div>
+
+            <button type="submit">Login</button>
+            <p class="toggle-form">Don't have an account? <a href="#" onclick="showRegister()">Sign up</a></p>
+        </form>
+
+        <!-- Registration Form (Initially Hidden) -->
+        <form id="registerForm" class="hidden">
+            <div class="input-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" placeholder="Enter your full name" required>
+            </div>
+
+            <div class="input-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" placeholder="Enter your phone number" required>
+            </div>
+
+            <div class="input-group">
+                <label for="register-email">Email</label>
+                <input type="email" id="register-email" placeholder="Enter your email" required>
+            </div>
+
+            <div class="input-group">
+                <label for="register-password">Password</label>
+                <div class="password-container">
+                    <input type="password" id="register-password" placeholder="Create a password" required>
+                    <span class="toggle-password" onclick="togglePassword('register-password')">👁</span>
+                </div>
+            </div>
+
+            <button type="submit">Register</button>
+            <p class="toggle-form">Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+        </form>
+    </div>
+
+    <script>
+        function togglePassword(fieldId) {
+            let passwordField = document.getElementById(fieldId);
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+            } else {
+                passwordField.type = "password";
+            }
+        }
+
+        // Show Registration Form & Hide Login Form
+        function showRegister() {
+            document.getElementById("loginForm").classList.add("hidden");
+            document.getElementById("registerForm").classList.remove("hidden");
+        }
+
+        // Show Login Form & Hide Registration Form
+        function showLogin() {
+            document.getElementById("registerForm").classList.add("hidden");
+            document.getElementById("loginForm").classList.remove("hidden");
+        }
+
+        // Form Validations (Basic Example)
+        document.getElementById("loginForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            let email = document.getElementById("login-email").value.trim();
+            let password = document.getElementById("login-password").value.trim();
+
+            if (email === "" || password === "") {
+                alert("Please fill in all fields.");
+            } else {
+                alert("Login successful!");
+            }
+        });
+
+        document.getElementById("registerForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            let name = document.getElementById("name").value.trim();
+            let phone = document.getElementById("phone").value.trim();
+            let email = document.getElementById("register-email").value.trim();
+            let password = document.getElementById("register-password").value.trim();
+
+            if (name === "" || phone === "" || email === "" || password === "") {
+                alert("Please fill in all fields.");
+            } else {
+                alert("Registration successful!");
+                showLogin(); // Switch to login form after registration
+            }
+        });
+    </script>
+</body>
+</html>

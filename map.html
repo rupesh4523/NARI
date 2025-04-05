@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cab Booking App</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e1e1e;
+      color: #ffffff;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(45, 45, 45, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      width: 280px;
+    }
+    #controls h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    #controls input {
+      margin: 8px 0;
+      padding: 8px;
+      width: 100%;
+      background: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+    #controls button {
+      padding: 8px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 8px 0;
+      width: 100%;
+      font-weight: bold;
+    }
+    #controls button:hover {
+      background: #0056b3;
+    }
+    #loading {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+      color: #007bff;
+    }
+    .distance-label {
+      position: absolute;
+      background: rgba(45, 45, 45, 0.8);
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-weight: bold;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+    .user-marker {
+      background-color: #007bff;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      border: 3px solid white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="map"></div>
+
+
+  <div id="controls">
+    <h3>Enter Destination</h3>
+    <label for="destination-address">Address:</label>
+    <input type="text" id="destination-address" placeholder="Enter destination address" />
+    <div id="loading">Calculating route...</div>
+    <button onclick="calculateRoute()">Calculate Route</button>
+    <button onclick="redirectToUserLocation()">Redirect to My Location</button>
+  </div>
+
+ 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+ 
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+ 
+  <script>
+    
+    const map = L.map('map').setView([51.505, -0.09], 13);
+
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors, © CartoDB',
+    }).addTo(map);
+
+    
+    let userLocation;
+    let routingControl;
+    let distanceLabel;
+
+    
+    function getUserLocation() {
+      const loadingElement = document.getElementById('loading');
+      loadingElement.style.display = 'block';
+      loadingElement.textContent = 'Getting your location...';
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          userLocation = [latitude, longitude];
+
+         
+          L.marker(userLocation, {
+            title: 'You are here',
+            icon: L.divIcon({
+              className: 'user-marker',
+              iconSize: [26, 26]
+            })
+          })
+          .addTo(map)
+          .bindPopup('You are here')
+          .openPopup();
+
+          
+          map.setView(userLocation, 13);
+          loadingElement.style.display = 'none';
+        },
+        (error) => {
+          let errorMessage;
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location access was denied. Using default location.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable. Using default location.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "The request to get location timed out. Using default location.";
+              break;
+            default:
+              errorMessage = "An unknown error occurred. Using default location.";
+          }
+          console.error(errorMessage);
+          
+         
+          userLocation = [51.505, -0.09];
+          map.setView(userLocation, 13);
+          loadingElement.style.display = 'none';
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    
+    getUserLocation();
+
+   
+    async function geocodeAddress(address) {
+      const loadingElement = document.getElementById('loading');
+      loadingElement.style.display = 'block';
+      loadingElement.textContent = 'Finding address...';
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'CabBookingApp/1.0 (your@email.com)'
+          }
+        });
+        const data = await response.json();
+        if (data.length > 0) {
+          loadingElement.style.display = 'none';
+          return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        } else {
+          throw new Error('Address not found');
+        }
+      } catch (error) {
+        loadingElement.style.display = 'none';
+        throw error;
+      }
+    }
+
+    
+    async function calculateRoute() {
+      const address = document.getElementById('destination-address').value;
+      if (!address) {
+        alert('Please enter a valid address.');
+        return;
+      }
+
+      try {
+        const destination = await geocodeAddress(address);
+
+        
+        if (routingControl) {
+          map.removeControl(routingControl);
+        }
+        
+        if (distanceLabel) {
+          map.removeLayer(distanceLabel);
+        }
+
+       
+        routingControl = L.Routing.control({
+          waypoints: [
+            L.latLng(userLocation[0], userLocation[1]), 
+            L.latLng(destination[0], destination[1]),
+          ],
+          routeWhileDragging: true,
+          lineOptions: {
+            styles: [{ color: '#007bff', opacity: 0.7, weight: 5 }],
+          },
+          show: false, 
+          addWaypoints: false, 
+          draggableWaypoints: false 
+        }).addTo(map);
+
+        
+        const bounds = L.latLngBounds([userLocation, destination]);
+        map.flyToBounds(bounds, { padding: [50, 50], duration: 1 });
+
+        
+        routingControl.on('routesfound', (e) => {
+          const routes = e.routes;
+          const distance = (routes[0].summary.totalDistance / 1000).toFixed(2); 
+          
+         
+          const midpointIndex = Math.floor(routes[0].coordinates.length / 2);
+          const midpoint = routes[0].coordinates[midpointIndex];
+          
+          
+          if (distanceLabel) {
+            map.removeLayer(distanceLabel);
+          }
+          
+
+          distanceLabel = L.marker([midpoint.lat, midpoint.lng], {
+            icon: L.divIcon({
+              className: 'distance-label',
+              html: `${distance} km`,
+              iconSize: null
+            }),
+            interactive: false
+          }).addTo(map);
+        });
+      } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        alert('Could not find the address. Please try again.');
+        console.error(error);
+      }
+    }
+
+   
+    function redirectToUserLocation() {
+      if (userLocation) {
+        
+        map.flyTo(userLocation, 5, {
+          duration: 1,
+        }).once('zoomend', () => {
+         
+          map.flyTo(userLocation, 13, {
+            duration: 1,
+          });
+        });
+      } else {
+        alert('User location not available. Trying to get it again...');
+        getUserLocation();
+      }
+    }
+
+   
+    map.on('click', async (e) => {
+      const destination = [e.latlng.lat, e.latlng.lng];
+      
+      
+      document.getElementById('destination-address').value = '';
+
+      
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+      
+      if (distanceLabel) {
+        map.removeLayer(distanceLabel);
+      }
+
+      
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(userLocation[0], userLocation[1]),
+          L.latLng(destination[0], destination[1]), 
+        ],
+        routeWhileDragging: true,
+        lineOptions: {
+          styles: [{ color: '#007bff', opacity: 0.7, weight: 5 }],
+        },
+        show: false, 
+        addWaypoints: false, 
+        draggableWaypoints: false 
+      }).addTo(map);
+
+      
+      routingControl.on('routesfound', (e) => {
+        const routes = e.routes;
+        const distance = (routes[0].summary.totalDistance / 1000).toFixed(2);
+        
+       
+        const midpointIndex = Math.floor(routes[0].coordinates.length / 2);
+        const midpoint = routes[0].coordinates[midpointIndex];
+        
+       
+        if (distanceLabel) {
+          map.removeLayer(distanceLabel);
+        }
+        
+        
+        distanceLabel = L.marker([midpoint.lat, midpoint.lng], {
+          icon: L.divIcon({
+            className: 'distance-label',
+            html: `${distance} km`,
+            iconSize: null
+          }),
+          interactive: false
+        }).addTo(map);
+      });
+    });
+  </script>
+</body>
+</html>
