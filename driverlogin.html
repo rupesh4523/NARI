@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Login & Register</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background: #121826;
+            color: white;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            width: 800px;
+            background: #1a2333;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-section {
+            flex: 1;
+            background: url('https://source.unsplash.com/400x600/?car,night') no-repeat center;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .image-section h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .form-section {
+            flex: 1;
+            background: #1e293b;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .tabs {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 10px;
+            border-bottom: 2px solid transparent;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #ff7b54;
+        }
+
+        .form {
+            display: none;
+            width: 100%;
+        }
+
+        .form.active {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .fuel-selection {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .fuel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #444;
+            color: white;
+        }
+
+        .fuel-btn.active {
+            background: #ff7b54;
+        }
+
+        .single-select {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        button {
+            background: #ff7b54;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #ff5a3d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="image-section">
+            <img src="C:\Users\Rupesh\OneDrive\Desktop\project\frontend\WhatsApp Image 2025-03-10 at 22.21.14_280affd9.jpg" alt="Car at night" style="width: 100%; height: auto; border-radius: 12px;">
+            <h1>Welcome, Driver!</h1>
+            <p>Log in or sign up to get started.</p>
+        </div>
+        <div class="form-section">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showForm('login')">Login</button>
+                <button class="tab-btn" onclick="showForm('register')">Register</button>
+            </div>
+
+            <form id="login-form" class="form active">
+                <h2>Login</h2>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+
+            <form id="register-form" class="form">
+                <h2>Register</h2>
+                <input type="text" placeholder="Full Name" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <input type="password" placeholder="Confirm Password" required>
+                <input type="text" placeholder="Vehicle Number" required>
+                <input type="text" placeholder="Vehicle Model" required>
+                <input type="text" placeholder="Registered Owner Name" required>
+                
+                <label>Fuel Type:</label>
+                <div class="fuel-selection">
+                    <button type="button" class="fuel-btn" id="petrol" onclick="toggleFuel('petrol')">Petrol</button>
+                    <button type="button" class="fuel-btn" id="diesel" onclick="toggleFuel('diesel')">Diesel</button>
+                    <button type="button" class="fuel-btn" id="electric" onclick="toggleElectric()">Electric</button>
+                </div>
+
+                <button type="submit">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showForm(formType) {
+            document.querySelectorAll(".form").forEach(form => {
+                form.classList.remove("active");
+            });
+            document.getElementById(formType + "-form").classList.add("active");
+
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                btn.classList.remove("active");
+            });
+            event.target.classList.add("active");
+        }
+
+        function toggleFuel(type) {
+            let button = document.getElementById(type);
+            let electricButton = document.getElementById("electric");
+
+            
+            if (electricButton.classList.contains("active")) {
+                return;
+            }
+
+            
+            button.classList.toggle("active");
+        }
+
+        function toggleElectric() {
+            let electricButton = document.getElementById("electric");
+            let petrolButton = document.getElementById("petrol");
+            let dieselButton = document.getElementById("diesel");
+
+            if (electricButton.classList.contains("active")) {
+                
+                electricButton.classList.remove("active");
+                petrolButton.classList.remove("single-select");
+                dieselButton.classList.remove("single-select");
+            } else {
+               
+                electricButton.classList.add("active");
+                petrolButton.classList.remove("active");
+                dieselButton.classList.remove("active");
+                petrolButton.classList.add("single-select");
+                dieselButton.classList.add("single-select");
+            }
+        }
+    </script>
+</body>
+</html>
